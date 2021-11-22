@@ -1,0 +1,8 @@
+*.o
+*.hi
+*.att
+*.dot
+compose
+isl
+showtran
+tmon
