@@ -190,9 +190,11 @@ This is a problem for future me.
 >            , finalsT  = Set.insert Nothing . Set.fromList
 >                         $ map (Just . snd) m
 >            }
->     where m = monset t
+>     where m = filter nf $ monset t
 >           mm = Map.fromList m
 >           ml = length . fst $ last m
+>           d = domain t `Set.difference` Set.fromList [ELeft, ERight]
+>           nf x = (ELeft `notElem` fst x) && (ERight `notElem` fst x)
 >           tr x
 >               | length (fst x) == ml = []
 >               | otherwise = map
@@ -200,7 +202,7 @@ This is a problem for future me.
 >                                     (Tsym (),
 >                                      mm Map.!? (fst x ++ [s]),
 >                                      DRight)))
->                             (Set.toList $ domain t)
+>                             (Set.toList d)
 
 > renameStates :: (Ord a, Ord b, Ord n) =>
 >                 Transducer n a b -> Transducer Int a b
