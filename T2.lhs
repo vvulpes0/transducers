@@ -15,14 +15,14 @@ Don't use Null as an input, that isn't handled (yet?)
 > data Direction = DLeft | DStay | DRight deriving (Eq, Ord, Read, Show)
 > data Transducer n a b
 >     = Transducer
->       { transitionsT :: Map (Tsym a, n) (Tsym b, n, Direction)
+>       { transitionsT :: Map (Tsym a, n) (Set (Tsym b, n, Direction))
 >       , initialT     :: n
 >       , finalsT      :: Set n
 >       }
 >     deriving (Eq, Ord, Read, Show)
 
 > sinks :: Ord n => Transducer n a b -> Set n
-> sinks = Set.fromList . map (\(_,b,_)->b) . Map.elems . transitionsT
+> sinks = Set.fromList . map (\(_,b,_)->b) . listify . transitionsT
 
 > sources :: Ord n => Transducer n a b -> Set n
 > sources = Set.fromList . map snd . Map.keys . transitionsT
@@ -34,28 +34,30 @@ Don't use Null as an input, that isn't handled (yet?)
 > domain :: Ord a => Transducer n a b -> Set (Tsym a)
 > domain = Set.fromList . map fst . Map.keys . transitionsT
 > codomain :: Ord b => Transducer n a b -> Set (Tsym b)
-> codomain = Set.fromList . map (\(b,_,_)->b) . Map.elems . transitionsT
+> codomain = Set.fromList . map (\(b,_,_)->b) . listify . transitionsT
 
 > t = Transducer
->     (Map.fromList [ ((a,1),(a,2,DRight))
->                   , ((b,2),(b,3,DLeft))
->                   , ((a,3),(a,4,DRight))
->                   , ((b,4),(b,5,DLeft))
->                   , ((a,5),(a,6,DLeft))
+>     (Map.fromList [ ((a,1),s (a,2,DRight))
+>                   , ((b,2),s (b,3,DLeft))
+>                   , ((a,3),s (a,4,DRight))
+>                   , ((b,4),s (b,5,DLeft))
+>                   , ((a,5),s (a,6,DLeft))
 >                   ])
 >     1 (Set.fromList [1,2,3,4,5,6])
 >     where a = Tsym "a"
 >           b = Tsym "b"
+>           s = Set.singleton
 > t' = Transducer
->     (Map.fromList [ ((a,1),(a,2,DRight))
->                   , ((b,2),(b,3,DLeft))
->                   , ((a,3),(a,4,DRight))
->                   , ((b,4),(b,5,DRight))
->                   , ((a,5),(a,6,DLeft))
+>     (Map.fromList [ ((a,1),s (a,2,DRight))
+>                   , ((b,2),s (b,3,DLeft))
+>                   , ((a,3),s (a,4,DRight))
+>                   , ((b,4),s (b,5,DRight))
+>                   , ((a,5),s (a,6,DLeft))
 >                   ])
 >     1 (Set.fromList [1,2,3,4,5,6])
 >     where a = Tsym "a"
 >           b = Tsym "b"
+>           s = Set.singleton
 
 
 
@@ -91,8 +93,8 @@ leave same, string is forward
 >       Set n -> Transducer n a b -> [Tsym a] -> Set n
 > fs _ _ [] = Set.empty
 > fs open t (x:[]) = Set.fromList . map (\(_,b,_) -> b)
->                    . Map.elems
->                    . Map.filter isLeft
+>                    . listify
+>                    . Map.map (Set.filter isLeft)
 >                    . Map.filterWithKey onX
 >                    $ transitionsT t
 >     where onX p _ = x == fst p && Set.member (snd p) open
@@ -109,8 +111,8 @@ leave opposite, string is forward
 >       Set n -> Transducer n a b -> [Tsym a] -> Set n
 > fo _ _ [] = Set.empty
 > fo open t (x:[]) = Set.fromList . map (\(_,b,_) -> b)
->                    . Map.elems
->                    . Map.filter isRight
+>                    . listify
+>                    . Map.map (Set.filter isRight)
 >                    . Map.filterWithKey onX
 >                    $ transitionsT t
 >     where onX p _ = x == fst p && Set.member (snd p) open
@@ -153,19 +155,23 @@ The slowest way to make a monoid, but hey, it works!
 
 > type Behaviours n = (Set (n,n), Set (n,n), Set (n,n), Set (n,n))
 
-> monset :: (Ord a, Ord b, Ord n) =>
->           Transducer n a b -> [([Tsym a], Behaviours n)]
-> monset = truncMS Set.empty 0 . monset'
+> twoway :: (Ord a, Ord b, Ord n) =>
+>           Transducer n a b -> [Tsym a] -> Behaviours n
+> twoway t x = (bh_ll t x, bh_lr t x, bh_rl t x, bh_rr t x)
+
+> monset :: (Ord a, Ord b, Ord n, Ord e) =>
+>           (Transducer n a b -> [Tsym a] -> e)
+>        -> Transducer n a b -> [([Tsym a], e)]
+> monset bh = truncMS Set.empty 0 . monset' bh
 
 > monset' :: (Ord a, Ord b, Ord n) =>
->            Transducer n a b -> [([Tsym a], Behaviours n)]
-> monset' t = map (\a -> (a, bh a)) . drop 1
+>            (Transducer n a b -> [Tsym a] -> e)
+>         -> Transducer n a b -> [([Tsym a], e)]
+> monset' bh t = map (\a -> (a, bh t a)) . drop 1
 >             $ stringsOver (Set.toList $ domain t)
->     where bh x = (bh_ll t x, bh_lr t x, bh_rl t x, bh_rr t x)
 
-> truncMS :: (Ord a, Ord n) =>
->            Set (Behaviours n) -> Int -> [([Tsym a], Behaviours n)]
->         -> [([Tsym a], Behaviours n)]
+> truncMS :: (Ord a, Ord e) =>
+>            Set e -> Int -> [([Tsym a], e)] -> [([Tsym a], e)]
 > truncMS _ _ [] = []
 > truncMS seen sz (x:xs)
 >     | len > sz + 1 = []
@@ -180,9 +186,10 @@ when there is no identity already present.
 This requires testing to find an identity.
 This is a problem for future me.
 
-> cayley :: (Ord a, Ord b, Ord n) =>
->           Transducer n a b -> Transducer (Maybe (Behaviours n)) a ()
-> cayley t = Transducer
+> cayley :: (Ord a, Ord b, Ord n, Ord e) =>
+>           (Transducer n a b -> [Tsym a] -> e)
+>        -> Transducer n a b -> Transducer (Maybe e) a ()
+> cayley bh t = Transducer
 >            { transitionsT = Map.fromList
 >                             . concatMap tr
 >                             $ (([],Nothing) : map (fmap Just) m)
@@ -190,7 +197,7 @@ This is a problem for future me.
 >            , finalsT  = Set.insert Nothing . Set.fromList
 >                         $ map (Just . snd) m
 >            }
->     where m = filter nf $ monset t
+>     where m = filter nf $ monset bh t
 >           mm = Map.fromList m
 >           ml = length . fst $ last m
 >           d = domain t `Set.difference` Set.fromList [ELeft, ERight]
@@ -199,6 +206,7 @@ This is a problem for future me.
 >               | length (fst x) == ml = []
 >               | otherwise = map
 >                             (\s -> ((s, snd x),
+>                                     Set.singleton
 >                                     (Tsym (),
 >                                      mm Map.!? (fst x ++ [s]),
 >                                      DRight)))
@@ -212,7 +220,8 @@ This is a problem for future me.
 >                  , initialT = r $ initialT t
 >                  , finalsT  = Set.map r $ finalsT t
 >                  }
->     where rt ((x, p), (y, q, d)) = ((x, r p), (y, r q, d))
+>     where rt ((x, p), ds) = ((x, r p), Set.map f ds)
+>           f (y, q, d) = (y, r q, d)
 >           s = Set.toList $ T2.states t
 >           m = Map.fromList $ zip s [1..]
 >           r x = maybe 0 id (m Map.!? x)
@@ -227,12 +236,12 @@ This is a problem for future me.
 >           , isDeterministic = False
 >           }
 >     where mktrs [] = []
->           mktrs (((a,p),(_,q,_)):xs)
->               = Transition { edgeLabel = Symbol a
->                            , source = State p
->                            , destination = State q
->                            }
->                 : mktrs xs
+>           mktrs ((a,ds):xs)
+>               = map (mktr a) (Set.toList ds) ++ mktrs xs
+>           mktr (a,p) (_,q,_) = Transition { edgeLabel = Symbol a
+>                                           , source = State p
+>                                           , destination = State q
+>                                           }
 
 > untsym :: Show a => Tsym a -> String
 > untsym (Tsym x) = show x
@@ -251,3 +260,5 @@ This is a problem for future me.
 >                 if null a
 >                 then []
 >                 else concatMap (\w -> map (: w) a) (stringsOver a)
+
+> listify = concatMap Set.toList . Map.elems
