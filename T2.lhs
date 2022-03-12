@@ -180,11 +180,8 @@ The slowest way to make a monoid, but hey, it works!
 >     where len = length (fst x)
 
 The "cayley'" function generates the syntactic semigroup
-and adjoins 1 unconditionally.
-In order to be truly correct, the identity should be adjoined only
-when there is no identity already present.
-This requires testing to find an identity.
-This is a problem for future me.
+and adjoins 1 iff no existing element is the identity.
+The identity test is not exactly cheap, but it will do for now.
 
 > cayley :: (Ord a, Ord b, Ord n, Ord e) =>
 >           (Transducer n a b -> [Tsym a] -> e)
@@ -192,14 +189,22 @@ This is a problem for future me.
 > cayley bh t = Transducer
 >            { transitionsT = Map.fromList
 >                             . concatMap tr
->                             $ (([],Nothing) : map (fmap Just) m)
->            , initialT = Nothing
->            , finalsT  = Set.insert Nothing . Set.fromList
+>                             . (maybe (([],Nothing):) (const id) i)
+>                             $ map (fmap Just) m
+>            , initialT = i
+>            , finalsT  = Set.insert i . Set.fromList
 >                         $ map (Just . snd) m
 >            }
 >     where m = filter nf $ monset bh t
 >           mm = Map.fromList m
 >           ml = length . fst $ last m
+>           isLI x = all (\(w,g) -> bh t (x++w) == g) m
+>           isRI x = all (\(w,g) -> bh t (w++x) == g) m
+>           ids = filter (uncurry (const . isRI))
+>                 $ filter (uncurry (const . isLI)) m
+>           i = case ids of
+>                 (x:_) -> Just (snd x)
+>                 _     -> Nothing
 >           d = domain t `Set.difference` Set.fromList [ELeft, ERight]
 >           nf x = (ELeft `notElem` fst x) && (ERight `notElem` fst x)
 >           tr x

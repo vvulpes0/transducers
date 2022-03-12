@@ -9,14 +9,14 @@
 > import LTK.Porters.ATT
 
 > main = do
->   let aut = mkstraut $ cayley bh_lr tutrugbuNoCNoBounds
+>   let aut = mkstraut $ cayley bh_lr tutrugbu'
 >   putStr . (\(a,_,_) -> a) . extractSymbolsATT $ exportATT aut
 >   --hPrint stderr (isTLT $ syntacticMonoid aut)
 
-note that C is a nonsalient symbol for tutrugbu,
+The transducer for Tutrugbu vowel harmony obtained by merging 
+extraneous states in the McCollum et al preprint.
+Note that C is a nonsalient symbol for Tutrugbu,
 which means it is the identity.
-The inserted identity should be removed before furthur processing.
-I'll code in the check to avoid spurious insertion at some point.
 
 > tutrugbu = Transducer
 >            (Map.fromList [ ((cc, 1), s (cc, 1, DRight))
@@ -80,70 +80,11 @@ I'll code in the check to avoid spurious insertion at some point.
 >           rt = Tsym "⎷"
 >           s = Set.singleton
 
-An alternative definition, and indeed the transducer obtained
-by removing extraneous states in the McCollum et al preprint.
-The tutrugbuNoC transducer is simply tutrugbu without the
-"c" transtions, obviating the need to account for adjoined identities.
-
-> tutrugbuNoC
->     = Transducer
->       (Map.fromList [ ((ht, 1), s (ht, 2, DRight))
->                     , ((mt, 1), s (mt, 2, DRight))
->                     , ((hl, 1), s (hl, 3, DRight))
->                     , ((ml, 1), s (ml, 3, DRight))
->                     , ((ht, 2), s (ht, 2, DRight))
->                     , ((mt, 2), s (mt, 2, DRight))
->                     , ((hl, 2), s (ht, 2, DRight))
->                     , ((ml, 2), s (mt, 2, DRight))
->                     , ((rt, 2), s (nl, 4, DRight))
->                     , ((ht, 3), s (hl, 3, DRight))
->                     , ((mt, 3), s (ml, 3, DRight))
->                     , ((hl, 3), s (hl, 3, DRight))
->                     , ((ml, 3), s (ml, 3, DRight))
->                     , ((rt, 3), s (nl, 5, DRight))
->                     , ((ht, 4), s (ht, 4, DRight))
->                     , ((hl, 4), s (ht, 4, DRight))
->                     , ( (mt, 4)
->                       , Set.fromList
->                         [ (ml, 6, DRight), (mt, 7, DRight) ])
->                     , ( (ml, 4)
->                       , Set.fromList
->                         [ (ml, 6, DRight), (mt, 7, DRight) ])
->                     , ((ht, 5), s (hl, 5, DRight))
->                     , ((hl, 5), s (hl, 5, DRight))
->                     , ((mt, 5), s (ml, 5, DRight))
->                     , ((ml, 5), s (ml, 5, DRight))
->                     , ((mt, 6), s (ml, 6, DRight))
->                     , ((ml, 6), s (ml, 6, DRight))
->                     , ( (ht, 6)
->                       , Set.fromList
->                         [ (hl, 6, DRight), (hl, 8, DRight) ])
->                     , ( (hl, 6)
->                       , Set.fromList
->                         [ (hl, 6, DRight), (hl, 8, DRight) ])
->                     , ((mt, 7), s (mt, 7, DRight))
->                     , ((ml, 7), s (mt, 7, DRight))
->                     , ( (ht, 7)
->                       , Set.fromList
->                         [ (ht, 7, DRight), (ht, 8, DRight) ])
->                     , ( (hl, 7)
->                       , Set.fromList
->                         [ (ht, 7, DRight), (ht, 8, DRight) ])
->                     ])
->       1 (Set.fromList [4, 5, 8])
->     where ht = Tsym "i"
->           hl = Tsym "ɪ"
->           mt = Tsym "o"
->           ml = Tsym "ɔ"
->           nl = Null
->           rt = Tsym "⎷"
->           s = Set.singleton
-
-TutrugbuNoC without a distinguished boundary symbol for the
+Tutrugbu without a distinguished boundary symbol for the
 root/affix pair; instead the root and affix vowels are coded
 differently.
 
-> tutrugbuNoCNoBounds
+> tutrugbu'
 >     = Transducer
 >       (Map.fromList [ ((ht, 1), s (ht, 4, DRight))
 >                     , ((mt, 1), s (mt, 4, DRight))
@@ -197,9 +138,16 @@ differently.
 >                     , ( (hl, 7)
 >                       , Set.fromList
 >                         [ (ht, 7, DRight), (ht, 8, DRight) ])
+>                     , ((cc, 1), s (cc, 1, DRight))
+>                     , ((cc, 4), s (cc, 4, DRight))
+>                     , ((cc, 5), s (cc, 5, DRight))
+>                     , ((cc, 6), s (cc, 6, DRight))
+>                     , ((cc, 7), s (cc, 7, DRight))
+>                     , ((cc, 8), s (cc, 8, DRight))
 >                     ])
 >       1 (Set.fromList [4, 5, 8])
->     where ht  = Tsym "i"
+>     where cc  = Tsym "c"
+>           ht  = Tsym "i"
 >           hl  = Tsym "ɪ"
 >           mt  = Tsym "o"
 >           ml  = Tsym "ɔ"
