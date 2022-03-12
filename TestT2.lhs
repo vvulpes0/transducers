@@ -9,9 +9,9 @@
 > import LTK.Porters.ATT
 
 > main = do
->   let aut = mkstraut $ cayley bh_lr tutrugbuNoC
+>   let aut = mkstraut $ cayley bh_lr tutrugbuNoCNoBounds
 >   putStr . (\(a,_,_) -> a) . extractSymbolsATT $ exportATT aut
->   --hPrint stderr (isLT $ syntacticMonoid aut)
+>   --hPrint stderr (isTLT $ syntacticMonoid aut)
 
 note that C is a nonsalient symbol for tutrugbu,
 which means it is the identity.
@@ -77,7 +77,7 @@ I'll code in the check to avoid spurious insertion at some point.
 >           mt = Tsym "o"
 >           ml = Tsym "ɔ"
 >           nl = Null
->           rt = ELeft -- use a start-fish for a root marker
+>           rt = Tsym "⎷"
 >           s = Set.singleton
 
 An alternative definition, and indeed the transducer obtained
@@ -136,8 +136,79 @@ The tutrugbuNoC transducer is simply tutrugbu without the
 >           mt = Tsym "o"
 >           ml = Tsym "ɔ"
 >           nl = Null
->           rt = ELeft -- use a start-fish for a root marker
+>           rt = Tsym "⎷"
 >           s = Set.singleton
+
+TutrugbuNoC without a distinguished boundary symbol for the
+root/affix pair; instead the root and affix vowels are coded
+differently.
+
+> tutrugbuNoCNoBounds
+>     = Transducer
+>       (Map.fromList [ ((ht, 1), s (ht, 4, DRight))
+>                     , ((mt, 1), s (mt, 4, DRight))
+>                     , ((hl, 1), s (hl, 5, DRight))
+>                     , ((ml, 1), s (ml, 5, DRight))
+>                     , ((rht, 1), s (ht, 4, DRight))
+>                     , ((rmt, 1), s (mt, 4, DRight))
+>                     , ((rhl, 1), s (hl, 5, DRight))
+>                     , ((rml, 1), s (ml, 5, DRight))
+>                     , ((ht, 4), s (ht, 4, DRight))
+>                     , ((rht, 4), s (ht, 4, DRight))
+>                     , ((hl, 4), s (ht, 4, DRight))
+>                     , ((rhl, 4), s (ht, 4, DRight))
+>                     , ((rmt, 4), s (mt, 4, DRight))
+>                     , ((rml, 4), s (ml, 4, DRight))
+>                     , ( (mt, 4)
+>                       , Set.fromList
+>                         [ (ml, 6, DRight), (mt, 7, DRight) ])
+>                     , ( (ml, 4)
+>                       , Set.fromList
+>                         [ (ml, 6, DRight), (mt, 7, DRight) ])
+>                     , ((ht, 5), s (hl, 5, DRight))
+>                     , ((hl, 5), s (hl, 5, DRight))
+>                     , ((mt, 5), s (ml, 5, DRight))
+>                     , ((ml, 5), s (ml, 5, DRight))
+>                     , ((rht, 5), s (hl, 5, DRight))
+>                     , ((rhl, 5), s (hl, 5, DRight))
+>                     , ((rmt, 5), s (ml, 5, DRight))
+>                     , ((rml, 5), s (ml, 5, DRight))
+>                     , ((mt, 6), s (ml, 6, DRight))
+>                     , ((ml, 6), s (ml, 6, DRight))
+>                     , ( (ht, 6)
+>                       , Set.fromList
+>                         [ (hl, 6, DRight), (hl, 8, DRight) ])
+>                     , ( (hl, 6)
+>                       , Set.fromList
+>                         [ (hl, 6, DRight), (hl, 8, DRight) ])
+>                     , ((rht, 6), s (ht, 6, DRight))
+>                     , ((rhl, 6), s (hl, 6, DRight))
+>                     , ((rmt, 6), s (mt, 6, DRight))
+>                     , ((rml, 6), s (ml, 6, DRight))
+>                     , ((rht, 7), s (ht, 7, DRight))
+>                     , ((rhl, 7), s (hl, 7, DRight))
+>                     , ((rmt, 7), s (mt, 7, DRight))
+>                     , ((rml, 7), s (ml, 7, DRight))
+>                     , ((mt, 7), s (mt, 7, DRight))
+>                     , ((ml, 7), s (mt, 7, DRight))
+>                     , ( (ht, 7)
+>                       , Set.fromList
+>                         [ (ht, 7, DRight), (ht, 8, DRight) ])
+>                     , ( (hl, 7)
+>                       , Set.fromList
+>                         [ (ht, 7, DRight), (ht, 8, DRight) ])
+>                     ])
+>       1 (Set.fromList [4, 5, 8])
+>     where ht  = Tsym "i"
+>           hl  = Tsym "ɪ"
+>           mt  = Tsym "o"
+>           ml  = Tsym "ɔ"
+>           rht = Tsym "i̥"
+>           rhl = Tsym "ɪ̥"
+>           rmt = Tsym "o̥"
+>           rml = Tsym "ɔ̥"
+>           rnl = Null
+>           s   = Set.singleton
 
 High-tone plateauing, a different circumambient unbounded process
 
